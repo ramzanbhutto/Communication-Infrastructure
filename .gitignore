@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+node_modules/
+web/dist/
+bin/
+coverage/
+playwright-report/
+test-results/
+.superdesign/
+*.log

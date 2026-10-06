@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ops_admin
+      POSTGRES_PASSWORD: ops_demo_admin
+      POSTGRES_DB: covent_ops_demo
+    ports: ["127.0.0.1:55442:5432"]
+    volumes:
+      - ops_postgres:/var/lib/postgresql
+      - ./scripts/bootstrap.sql:/docker-entrypoint-initdb.d/00-bootstrap.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ops_admin -d covent_ops_demo"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["127.0.0.1:56389:6379"]
+    volumes: ["ops_redis:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  postgres-test:
+    image: postgres:18-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: ops_admin
+      POSTGRES_PASSWORD: ops_demo_admin
+      POSTGRES_DB: covent_ops_test
+    ports: ["127.0.0.1:55443:5432"]
+    tmpfs: ["/var/lib/postgresql"]
+    volumes: ["./scripts/bootstrap.sql:/docker-entrypoint-initdb.d/00-bootstrap.sql:ro"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ops_admin -d covent_ops_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  redis-test:
+    image: redis:8-alpine
+    profiles: ["test"]
+    ports: ["127.0.0.1:56390:6379"]
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+volumes:
+  ops_postgres:
+  ops_redis:
