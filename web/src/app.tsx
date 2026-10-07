@@ -407,8 +407,7 @@ export default function App() {
             <Dialog.Title>Reset synthetic scenarios</Dialog.Title>
             <Dialog.Description>
               This clears demo decisions, calls, messages and audit history in this isolated
-              workspace. It creates a new Redis stream namespace. Relay and other databases are
-              untouched.
+              workspace. It creates a new Redis stream namespace.
             </Dialog.Description>
             {resetError && <Notice error>{resetError}</Notice>}
             {resetError && (

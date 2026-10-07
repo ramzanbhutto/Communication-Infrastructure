@@ -5,6 +5,6 @@
 3. Completed: built the light interface with linked investigations, decision evidence and reply operations. Data access is typed and dialogs use accessible primitives.
 4. Completed: backend tests pass with the race detector and the browser tests cover the core workflows and failure states. Type checks and the production build pass. The handoff includes a five-minute walkthrough and actual application screenshots.
 
-The implementation remains local and demo-only. No paid provider or Covent private service is connected. Relay and the read-only reference are left unchanged.
+The implementation remains local and demo-only. No paid provider or Covent private service is connected. The read-only reference is left unchanged.
 
 The infrastructure extension adds durable delivery jobs, provider HTTP adapters, signed callbacks, bounded retry, ambiguous-result investigation, opt-out and bounce processing, inbox triage, resource provisioning contracts, an actual local SIP OPTIONS exchange and a consented email volume ramp. See [the capability map](infrastructure.md) for implemented and unavailable behavior. Production rollout is not marked complete.

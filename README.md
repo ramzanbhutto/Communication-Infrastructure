@@ -38,7 +38,7 @@ The default settings are in [.env.example](.env.example). The application reads 
 | Redis demo transport | `127.0.0.1:56389` |
 | Test PostgreSQL / Redis | `127.0.0.1:55443` / `127.0.0.1:56390` |
 
-The containers use their own project volumes. They do not reuse Relay's databases or ports. To stop them without deleting data, run `docker compose stop` in this folder.
+The containers use dedicated project volumes. To stop them without deleting data, run `docker compose stop` in this folder.
 
 ## Built frontend
 
