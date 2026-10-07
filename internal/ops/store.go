@@ -23,6 +23,7 @@ const DemoWorkspace = "demo-workspace"
 const resetLock int64 = 7426193
 
 type Store struct {
+	DNSTargets      map[string]string
 	DB              *pgxpool.Pool
 	Redis           *redis.Client
 	ReplySuccess    atomic.Int64

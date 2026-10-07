@@ -57,6 +57,8 @@ The option includes compatibility checks, durable text jobs, authenticated deliv
 
 ## Demonstrate the product
 
+- **Campaigns:** versioned email/SMS sequences, durable scheduling, recipient windows, reply-driven stopping and linked execution evidence.
+- **Email diagnostics:** recorded MX/SPF/DKIM/DMARC assessments, explicit fixture/native sources, history and signed-message authentication exercises.
 - **Infrastructure:** durable delivery jobs, verified callbacks, provider inbox, line provisioning, SIP resource contracts, a local SIP health probe and an email volume ramp.
 - **Desk:** actionable issues, measured metrics, dependency states and recent audit activity.
 - **Sending assets:** phone history, quarantine, restoration rules and read-only email configuration fixtures.
@@ -65,7 +67,11 @@ The option includes compatibility checks, durable text jobs, authenticated deliv
 
 Use **Reset scenario** to recreate the synthetic scenarios. Pending or unconfirmed infrastructure jobs block the normal reset. Resolve them first, or explicitly select the additional discard option in the reset dialog to reset this local lab, including unresolved synthetic jobs. The reset requires typing `RESET DEMO`, clears only this synthetic workspace and selects a new Redis namespace. It does not delete other workspaces or databases.
 
-Start with the [infrastructure walkthrough and capability map](docs/infrastructure.md). Follow the original [five-minute desk walkthrough](docs/interview.md) for the asset investigation flow. [Architecture](docs/architecture.md) explains the boundaries and tradeoffs. [API contracts](docs/api.md) describe the actual routes, validation and error behavior.
+Follow the [campaign and email walkthrough](docs/campaigns-and-email.md) to demonstrate a reply stopping a follow-up and configuration recovery releasing deferred work. The [infrastructure walkthrough](docs/infrastructure.md) covers provider contracts and the [desk walkthrough](docs/interview.md) covers line investigation. [Architecture](docs/architecture.md) explains the tradeoffs. [API contracts](docs/api.md) describe routes, validation and errors.
+
+![Campaign operations](docs/screenshots/campaigns.png)
+
+See [email diagnostics](docs/screenshots/email-diagnostics.png), [mobile campaigns](docs/screenshots/campaigns-mobile.png) and [mobile diagnostics](docs/screenshots/email-diagnostics-mobile.png).
 
 ## Verify
 
@@ -76,6 +82,8 @@ make build
 ```
 
 `make test` runs backend integration tests with the race detector, then browser tests sequentially against the isolated test database. Do not run the backend and browser suites concurrently because both deliberately reset test fixtures.
+
+The current local verification passed backend race tests, all 34 browser tests, Go vet, TypeScript checking, frontend formatting and the production build. Four targeted browser checks passed again after the final mobile layout changes. These results cover simulated providers, not live delivery.
 
 The browser suite needs Playwright's Chromium. If it is not already present, install the project browser with `cd web && npx playwright install chromium`. This downloads a browser, not system packages. Arch Linux must already have its browser runtime libraries.
 
@@ -91,7 +99,7 @@ See the [domains and SIP view](docs/screenshots/infrastructure-domains.png) and 
 
 ## Scope and limits
 
-Twilio and Resend HTTP adapters run against an isolated local provider lab. The lab simulates outcomes. No live provider credentials are read by the application. DNS inspection uses named local fixtures and checks record presence only. The demonstration DNC list is local and does not verify external registries or legal compliance. SMS requires explicit recorded consent and an inbound reply, never an email open alone.
+Twilio and Resend HTTP adapters run against an isolated local provider lab. The lab simulates outcomes. No live provider credentials are read by the application. The original Infrastructure DNS view uses presence-only fixtures. The separate Email diagnostics view adds bounded configuration analysis and optional explicitly configured public DNS queries. Neither establishes live inbox placement. The demonstration DNC list is local and does not verify external registries or legal compliance. SMS requires explicit recorded consent and an inbound reply, never an email open alone.
 
 The schema enforces tenant separation, but the UI exposes one synthetic workspace. The published demo identities demonstrate role checks and session handling, not production login or account recovery. The worker runs in the API process. SIP registration, RTP audio, real spam-label feeds, real mailbox synchronization and Apple business messaging onboarding remain outside the implemented local lab. This project has not been load tested or validated for production deployment.
 

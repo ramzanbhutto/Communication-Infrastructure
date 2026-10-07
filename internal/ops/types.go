@@ -200,6 +200,7 @@ func CSVSafe(s string) string {
 }
 
 var reasonText = map[string]string{
+	"ASSET_DAILY_CAP":         "The sending asset has reached its UTC daily reservation limit.",
 	"NO_IMESSAGE_PERMISSION":  "Explicit iMessage permission is required. SMS or email permission does not grant it.",
 	"IMESSAGE_ASSET_REQUIRED": "Choose an active iMessage bridge asset.",
 	"NO_EMAIL_PERMISSION":     "Explicit email permission is required in the local lab.",

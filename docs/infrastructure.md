@@ -18,7 +18,7 @@ The [domains and SIP view](screenshots/infrastructure-domains.png) and [mobile v
 | Provisioning | Twilio number creation contract, provider ID persistence and a new asset after confirmation | Lab resource creation only. No number is purchased |
 | SIP | Secure trunk creation contract and a real UDP OPTIONS exchange with a local peer | No SIP registration, origination routing, TLS test or RTP media |
 | Email | Resend submission with idempotency keys, signed delivery/bounce/complaint events and receiving API content retrieval | Outcomes and mailboxes come from the local provider lab |
-| Deliverability | DNS record inspection logic, explicit missing/unavailable states and recorded failure evidence | Runtime uses DNS fixtures. Record presence does not prove authorization, alignment or inbox placement |
+| Deliverability | Persisted MX/SPF/DKIM/DMARC configuration assessments, history, campaign gates and a signed-message fixture lab | Default DNS source is synthetic. Native DNS is opt-in for a configured domain. Neither proves inbox placement. See [email diagnostics](campaigns-and-email.md) |
 | Volume ramp | Scheduled updates to explicitly opted-in recipients, daily caps, request deduplication and automatic pause on bounce/complaint | No manufactured engagement or claim of reputation improvement |
 | Inbox | Verified SMS/email replies, authorized plain-text detail, resolution conflicts and audit entries | No Gmail/Outlook sync, attachments or full conversation threading |
 | Protection | Roles, forced RLS, verified callbacks, suppression, quotas, masking and conservative retries | Production identity and external DNC integration are still required |
@@ -86,7 +86,7 @@ Provider contracts were checked against [Twilio messages](https://www.twilio.com
 
 ## Verification
 
-Verification completed on the local build: all 29 browser tests passed including the optional iMessage extension, backend unit and PostgreSQL/Redis integration tests passed with the Go race detector, and Go vet, TypeScript checking, frontend formatting and the production build passed. The browser suite covers signed outcomes, ambiguity recovery, STOP suppression, DNS gates, volume scheduling, SIP evidence, reviewer authorization, keyboard access and populated mobile tables. These results establish local behavior, not live provider delivery or production capacity.
+Verification completed on the local build: all 34 browser tests passed including campaigns, email diagnostics and optional iMessage. Backend unit and PostgreSQL/Redis integration tests passed with the Go race detector. Go vet, TypeScript checking, frontend formatting and the production build passed. The browser suite covers signed outcomes, ambiguity recovery, reply-driven stopping, STOP suppression, DNS recovery, volume scheduling, SIP evidence, reviewer authorization, keyboard access and mobile layouts. These results establish local behavior, not live provider delivery or production capacity.
 
 ## Questions to prepare for
 

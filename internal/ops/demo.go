@@ -27,6 +27,7 @@ func seed(ctx context.Context, tx pgx.Tx, generation int64) error {
  ($1,'c104','Casey Reed','+12025550104','casey@example.test',false,now()-interval '1 day',NULL,NULL,NULL,NULL,NULL),
  ($1,'c105','Riley Chen','+12025550105','riley@example.test',false,NULL,NULL,NULL,NULL,NULL,NULL)`,
 		`INSERT INTO channel_permissions(workspace_id,contact_id,channel,granted_at,evidence) VALUES($1,'c102','email',now(),'Explicit synthetic lab opt-in')`,
+		`INSERT INTO email_fixture_state(workspace_id,asset_id,scenario) VALUES($1,'email-north','healthy'),($1,'email-east','broken')`,
 		`INSERT INTO email_ramps(workspace_id,asset_id) VALUES($1,'email-north')`,
 	}
 	for i, q := range statements {
@@ -109,7 +110,7 @@ func (s *Store) resetDemo(ctx context.Context, u User, discardUnconfirmed bool) 
 		return Result{}, err
 	}
 	// RLS and a fixed table list restrict deletion to the isolated demo workspace.
-	for _, t := range []string{"delivery_events", "delivery_jobs", "infrastructure_inbox", "infrastructure_dns", "infrastructure_sip", "email_ramps", "channel_permissions", "operations", "messages", "calls", "decisions", "replies", "outbox", "observations", "audit", "contacts", "assets"} {
+	for _, t := range []string{"campaign_executions", "campaign_enrollments", "campaigns", "email_assessments", "email_fixture_state", "sending_limits", "delivery_events", "delivery_jobs", "infrastructure_inbox", "infrastructure_dns", "infrastructure_sip", "email_ramps", "channel_permissions", "operations", "messages", "calls", "decisions", "replies", "outbox", "observations", "audit", "contacts", "assets"} {
 		if _, err = tx.Exec(ctx, "DELETE FROM "+t); err != nil {
 			return Result{}, err
 		}

@@ -80,6 +80,11 @@ func (s *Store) EnsureInfrastructure(ctx context.Context) error {
 	return tx.Commit(ctx)
 }
 func (s *Store) QueueDelivery(ctx context.Context, u User, in DeliveryInput) (Result, error) {
+	return s.queueDeliveryInTx(ctx, u, in, nil)
+}
+
+// Campaign execution and its job share the caller's transaction.
+func (s *Store) queueDeliveryInTx(ctx context.Context, u User, in DeliveryInput, provided pgx.Tx) (Result, error) {
 	if u.Role != "operator" {
 		return Result{403, Problem{Code: "FORBIDDEN", Message: "An operator role is required."}}, nil
 	}
@@ -124,11 +129,20 @@ func (s *Store) QueueDelivery(ctx context.Context, u User, in DeliveryInput) (Re
 			return Result{422, Problem{Code: "SUBJECT_REQUIRED", Message: "Enter an email subject."}}, nil
 		}
 	}
-	tx, err := s.Begin(ctx, u.WorkspaceID, false)
-	if err != nil {
+	tx := provided
+	var err error
+	commit := func() error { return nil }
+	if tx == nil {
+		tx, err = s.Begin(ctx, u.WorkspaceID, false)
+		if err != nil {
+			return Result{}, err
+		}
+		defer tx.Rollback(ctx)
+		commit = func() error { return tx.Commit(ctx) }
+	}
+	if err = campaignLock(ctx, tx, u.WorkspaceID); err != nil {
 		return Result{}, err
 	}
-	defer tx.Rollback(ctx)
 	if _, err = tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,0))", u.WorkspaceID+":"+u.ID+":"+in.RequestKey); err != nil {
 		return Result{}, err
 	}
@@ -180,14 +194,14 @@ func (s *Store) QueueDelivery(ctx context.Context, u User, in DeliveryInput) (Re
 		if reason, e := deliveryGate(ctx, tx, c, a, in.Channel); e != nil {
 			return Result{}, e
 		} else if reason != "ELIGIBLE" {
-			return deliveryRejection(ctx, tx, u, c, a, in.Channel, reason, 422)
+			return deliveryRejection(ctx, tx, u, c, a, in.Channel, reason, 422, commit)
 		}
 		var touches int
 		if err = tx.QueryRow(ctx, `SELECT (SELECT count(*) FROM delivery_jobs WHERE contact_id=$1 AND created_at>now()-interval '24 hours')+(SELECT count(*) FROM calls WHERE contact_id=$1 AND started_at>now()-interval '24 hours')+(SELECT count(*) FROM messages WHERE contact_id=$1 AND delivered_at>now()-interval '24 hours')`, c.ID).Scan(&touches); err != nil {
 			return Result{}, err
 		}
 		if touches >= 3 {
-			return deliveryRejection(ctx, tx, u, c, a, in.Channel, "TOUCH_LIMIT", 422)
+			return deliveryRejection(ctx, tx, u, c, a, in.Channel, "TOUCH_LIMIT", 422, commit)
 		}
 		if in.Channel == "call" {
 			var busy bool
@@ -195,8 +209,13 @@ func (s *Store) QueueDelivery(ctx context.Context, u User, in DeliveryInput) (Re
 				return Result{}, err
 			}
 			if busy {
-				return deliveryRejection(ctx, tx, u, c, a, in.Channel, "CALL_BUSY", 409)
+				return deliveryRejection(ctx, tx, u, c, a, in.Channel, "CALL_BUSY", 409, commit)
 			}
+		}
+		if reason, e := sendingCapacity(ctx, tx, a.ID); e != nil {
+			return Result{}, e
+		} else if reason != "" {
+			return deliveryRejection(ctx, tx, u, c, a, in.Channel, reason, 422, commit)
 		}
 		if in.Purpose == "ramp" {
 			if in.Channel != "email" {
@@ -232,7 +251,7 @@ func (s *Store) QueueDelivery(ctx context.Context, u User, in DeliveryInput) (Re
 	if err = audit(ctx, tx, u, "delivery.queued", asset, id, "Local provider lab. No real outreach."); err != nil {
 		return Result{}, err
 	}
-	return Result{202, map[string]any{"job": publicJob(j), "replayed": false, "simulated": true}}, tx.Commit(ctx)
+	return Result{202, map[string]any{"job": publicJob(j), "replayed": false, "simulated": true}}, commit()
 }
 func deliveryMissing(err error) (Result, error) {
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -240,7 +259,7 @@ func deliveryMissing(err error) (Result, error) {
 	}
 	return Result{}, err
 }
-func deliveryRejection(ctx context.Context, tx pgx.Tx, u User, c Contact, a Asset, channel, reason string, status int) (Result, error) {
+func deliveryRejection(ctx context.Context, tx pgx.Tx, u User, c Contact, a Asset, channel, reason string, status int, commit func() error) (Result, error) {
 	id, err := recordDecision(ctx, tx, u, c, a, channel, reason)
 	if err != nil {
 		return Result{}, err
@@ -248,7 +267,7 @@ func deliveryRejection(ctx context.Context, tx pgx.Tx, u User, c Contact, a Asse
 	if err = audit(ctx, tx, u, "delivery.blocked", a.ID, id, reason); err != nil {
 		return Result{}, err
 	}
-	return Result{status, Problem{Code: reason, Message: deliveryReason(reason), DecisionID: id}}, tx.Commit(ctx)
+	return Result{status, Problem{Code: reason, Message: deliveryReason(reason), DecisionID: id}}, commit()
 }
 func deliveryReason(code string) string {
 	if text, ok := reasonText[code]; ok {
@@ -315,6 +334,9 @@ func (s *Store) deliveryStep(ctx context.Context) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
+	if err = campaignLock(ctx, tx, DemoWorkspace); err != nil {
+		return err
+	}
 	_, err = tx.Exec(ctx, "UPDATE delivery_jobs SET state='unknown',last_error='SUBMISSION_INTERRUPTED',updated_at=now() WHERE state='submitting' AND lease_until<now()")
 	if err != nil {
 		return err
@@ -325,6 +347,11 @@ func (s *Store) deliveryStep(ctx context.Context) error {
 	}
 	if err != nil {
 		return err
+	}
+	if proceed, e := s.campaignDispatchGate(ctx, tx, j); e != nil {
+		return e
+	} else if !proceed {
+		return tx.Commit(ctx)
 	}
 	var body string
 	err = tx.QueryRow(ctx, "SELECT body FROM delivery_jobs WHERE id=$1", j.ID).Scan(&body)
@@ -356,6 +383,23 @@ func (s *Store) deliveryStep(ctx context.Context) error {
 		from = a.Address
 		if j.Channel == "email" {
 			from = "operator@" + a.Address
+		}
+	}
+	if j.AssetID != nil {
+		var ready bool
+		err = tx.QueryRow(ctx, `SELECT NOT EXISTS(SELECT 1 FROM sending_limits WHERE asset_id=$1 AND last_submitted_at+make_interval(secs=>pacing_seconds)>now())`, *j.AssetID).Scan(&ready)
+		if err != nil {
+			return err
+		}
+		if !ready {
+			_, err = tx.Exec(ctx, `UPDATE delivery_jobs SET next_attempt_at=(SELECT last_submitted_at+make_interval(secs=>pacing_seconds) FROM sending_limits WHERE asset_id=$2) WHERE id=$1`, j.ID, *j.AssetID)
+			if err != nil {
+				return err
+			}
+			return tx.Commit(ctx)
+		}
+		if _, err = tx.Exec(ctx, "UPDATE sending_limits SET last_submitted_at=clock_timestamp() WHERE asset_id=$1", *j.AssetID); err != nil {
+			return err
 		}
 	}
 	if _, err = tx.Exec(ctx, "UPDATE delivery_jobs SET state='submitting',attempts=attempts+1,lease_until=now()+interval '15 seconds',updated_at=now() WHERE id=$1", j.ID); err != nil {

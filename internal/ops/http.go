@@ -61,6 +61,16 @@ func decode(w http.ResponseWriter, r *http.Request, v any) bool {
 }
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/v1/campaigns", s.require(s.campaignList, false))
+	mux.HandleFunc("POST /api/v1/campaigns", s.require(s.campaignSave, true))
+	mux.HandleFunc("GET /api/v1/campaigns/{id}", s.require(s.campaignDetail, false))
+	mux.HandleFunc("POST /api/v1/campaigns/{id}/draft", s.require(s.campaignSave, true))
+	mux.HandleFunc("POST /api/v1/campaigns/{id}/enroll", s.require(s.campaignEnroll, true))
+	mux.HandleFunc("POST /api/v1/campaigns/{id}/{action}", s.require(s.campaignAction, true))
+	mux.HandleFunc("POST /api/v1/email-diagnostics/message-fixture", s.require(s.messageFixture, true))
+	mux.HandleFunc("GET /api/v1/email-diagnostics", s.require(s.emailList, false))
+	mux.HandleFunc("POST /api/v1/email-diagnostics/{id}/check", s.require(s.emailCheck, true))
+	mux.HandleFunc("POST /api/v1/email-diagnostics/{id}/fixture", s.require(s.emailFixture, true))
 	mux.HandleFunc("GET /health", s.health)
 	mux.HandleFunc("POST /hooks/twilio/status", s.providerHook)
 	mux.HandleFunc("POST /hooks/twilio/inbound", s.providerHook)

@@ -156,6 +156,9 @@ func (s *Store) applyDeliveryEventSource(ctx context.Context, eventID, jobID, pr
 		return err
 	}
 	defer tx.Rollback(ctx)
+	if err = campaignLock(ctx, tx, DemoWorkspace); err != nil {
+		return err
+	}
 	j, err := scanJob(tx.QueryRow(ctx, "SELECT "+jobColumns+" FROM delivery_jobs WHERE id=$1 FOR UPDATE", jobID))
 	if err != nil {
 		return err
@@ -188,6 +191,11 @@ func (s *Store) applyDeliveryEventSource(ctx context.Context, eventID, jobID, pr
 	if j.ContactID != nil && (code == "email.bounced" || code == "email.complained") {
 		_, err = tx.Exec(ctx, "UPDATE contacts SET opted_out_at=coalesce(opted_out_at,$2) WHERE id=$1", *j.ContactID, at)
 		if err != nil {
+			return err
+		}
+	}
+	if j.ContactID != nil && (code == "email.bounced" || code == "email.complained") {
+		if err = stopCampaignContact(ctx, tx, *j.ContactID, code); err != nil {
 			return err
 		}
 	}
@@ -225,6 +233,9 @@ func (s *Store) persistInboundSource(ctx context.Context, eventID, channel, from
 		return err
 	}
 	defer tx.Rollback(ctx)
+	if err = campaignLock(ctx, tx, DemoWorkspace); err != nil {
+		return err
+	}
 	if generation, ok := ctx.Value(imessageGenerationKey{}).(int64); ok {
 		var current int64
 		if err = tx.QueryRow(ctx, "SELECT generation FROM demo_state").Scan(&current); err != nil {
@@ -271,6 +282,13 @@ func (s *Store) persistInboundSource(ctx context.Context, eventID, channel, from
 		_, err = tx.Exec(ctx, "UPDATE contacts SET warm_signal='inbound_reply',warm_at=clock_timestamp() WHERE id=$1", contact)
 	}
 	if err != nil {
+		return err
+	}
+	reason := "INBOUND_REPLY"
+	if stop == "STOP" || stop == "UNSUBSCRIBE" || stop == "CANCEL" || stop == "END" || stop == "QUIT" {
+		reason = "OPTED_OUT"
+	}
+	if err = stopCampaignContact(ctx, tx, contact, reason); err != nil {
 		return err
 	}
 	if err = audit(ctx, tx, systemUser, "inbox.received", asset, eventID, "Verified local reply. Suppression applied when requested."); err != nil {

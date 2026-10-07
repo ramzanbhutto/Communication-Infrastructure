@@ -54,10 +54,11 @@ func (s *Store) RunWorker(ctx context.Context) {
 			return
 		case <-ticker.C:
 			delivery, finishDelivery := context.WithTimeout(ctx, 10*time.Second)
+			campaignErr := s.campaignStep(delivery)
 			rampErr := s.rampStep(delivery)
 			deliveryErr := s.deliveryStep(delivery)
-			s.DeliveryFailed.Store(rampErr != nil || deliveryErr != nil)
-			if rampErr == nil && deliveryErr == nil {
+			s.DeliveryFailed.Store(campaignErr != nil || rampErr != nil || deliveryErr != nil)
+			if campaignErr == nil && rampErr == nil && deliveryErr == nil {
 				s.DeliverySuccess.Store(time.Now().UnixMilli())
 			}
 			finishDelivery()
@@ -112,6 +113,9 @@ func (s *Store) replyStep(ctx context.Context, consumer string) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
+	if err = campaignLock(ctx, tx, DemoWorkspace); err != nil {
+		return err
+	}
 	var generation int64
 	var paused bool
 	if err = tx.QueryRow(ctx, "SELECT generation,replies_paused FROM demo_state").Scan(&generation, &paused); err != nil {
@@ -214,6 +218,13 @@ func (s *Store) replyStep(ctx context.Context, consumer string) error {
 				if _, e = tx.Exec(ctx, "UPDATE contacts SET warm_signal='inbound_reply',warm_at=$2 WHERE id=$1", p.ContactID, at); e != nil {
 					return e
 				}
+			}
+			reason := "INBOUND_REPLY"
+			if tag == "opt-out" {
+				reason = "OPTED_OUT"
+			}
+			if e = stopCampaignContact(ctx, tx, p.ContactID, reason); e != nil {
+				return e
 			}
 			if e = audit(ctx, tx, systemUser, "reply.persisted", p.AssetID, eventID, "Synthetic reply stored and suppression rules applied."); e != nil {
 				return e

@@ -59,6 +59,10 @@ export function statusTone(status: string): string {
   if (
     [
       'active',
+      'valid',
+      'pass',
+      'replied',
+      'configuration_ready',
       'available',
       'ready',
       'allowed',
@@ -69,7 +73,19 @@ export function statusTone(status: string): string {
     ].includes(status)
   )
     return 'good';
-  if (['blocked', 'unavailable', 'opt-out', 'failed', 'suppressed'].includes(status))
+  if (
+    [
+      'blocked',
+      'unavailable',
+      'opt-out',
+      'failed',
+      'suppressed',
+      'invalid',
+      'revoked',
+      'conflicting',
+      'fail'
+    ].includes(status)
+  )
     return 'blocked';
   return 'warning';
 }

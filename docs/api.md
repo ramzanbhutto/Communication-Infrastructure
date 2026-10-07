@@ -42,3 +42,7 @@ A queue has `state`, nullable `pending`, `unpublished`, `paused`, nullable `erro
 Infrastructure jobs, signed provider events, inbox, SIP and volume-ramp routes are specified in [Infrastructure](infrastructure.md#api-additions). Demo reset also accepts `discardUnconfirmed: true` only after the operator explicitly chooses to discard unresolved synthetic lab jobs.
 
 The optional iMessage compatibility, synchronization and scenario routes are documented in [the iMessage API contracts](imessage.md#application-api).
+
+## Campaign and diagnostic APIs
+
+See the [campaign contracts](campaigns-and-email.md#api) for the additive campaign and email diagnostic routes. Existing provider and outreach routes keep their contracts.

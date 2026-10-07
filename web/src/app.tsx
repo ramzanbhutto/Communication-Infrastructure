@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {
   ArrowRight,
+  GitBranch,
+  MailCheck,
   ChevronRight,
   FlaskConical,
   LayoutDashboard,
@@ -20,9 +22,23 @@ import { Conversations } from './components/conversations';
 import { Decisions, DecisionInspector } from './components/decisions';
 import { Desk } from './components/desk';
 import { Infrastructure } from './components/infrastructure';
+import { Campaigns } from './components/campaigns';
+import { EmailDiagnosticsPage } from './components/email-diagnostics';
 import { Badge, Loading, Notice, Stamp } from './components/ui';
 
 const pages = {
+  campaigns: {
+    name: 'Campaigns',
+    heading: 'Campaign operations',
+    subtitle: 'Follow scheduled work, recorded decisions and verified delivery.',
+    icon: GitBranch
+  },
+  email: {
+    name: 'Email diagnostics',
+    heading: 'Email diagnostics',
+    subtitle: 'Published configuration, lookup evidence and affected campaign work.',
+    icon: MailCheck
+  },
   infrastructure: {
     name: 'Infrastructure',
     heading: 'Communication infrastructure',
@@ -333,6 +349,29 @@ export default function App() {
               </Notice>
             )}
             <div className="page-view" key={page}>
+              {page === 'campaigns' && (
+                <Campaigns
+                  revision={revision}
+                  operator={operator}
+                  changed={refresh}
+                  fresh={fresh}
+                  busy={setMutationBusy}
+                  asset={inspectAsset}
+                  decision={inspectDecision}
+                  email={() => navigate('email')}
+                />
+              )}
+              {page === 'email' && (
+                <EmailDiagnosticsPage
+                  revision={revision}
+                  operator={operator}
+                  changed={refresh}
+                  fresh={fresh}
+                  busy={setMutationBusy}
+                  asset={inspectAsset}
+                  campaigns={() => navigate('campaigns')}
+                />
+              )}
               {page === 'infrastructure' && (
                 <Infrastructure
                   revision={revision}
@@ -406,8 +445,8 @@ export default function App() {
           <Dialog.Content className="modal">
             <Dialog.Title>Reset synthetic scenarios</Dialog.Title>
             <Dialog.Description>
-              This clears demo decisions, calls, messages and audit history in this isolated
-              workspace. It creates a new Redis stream namespace.
+              This clears demo campaigns, assessments, decisions, calls, messages and audit history
+              in this isolated workspace. It creates a new Redis stream namespace.
             </Dialog.Description>
             {resetError && <Notice error>{resetError}</Notice>}
             {resetError && (

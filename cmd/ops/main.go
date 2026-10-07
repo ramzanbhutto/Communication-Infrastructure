@@ -144,6 +144,20 @@ func run() error {
 	if env("IMESSAGE_LAB", "false") == "true" && store.IMessageBridge == nil {
 		return errors.New("IMESSAGE_LAB requires INFRA_LAB=true")
 	}
+	store.DNSTargets = map[string]string{}
+	for _, entry := range strings.Split(env("EMAIL_DIAGNOSTICS_TARGETS", ""), ",") {
+		if entry == "" {
+			continue
+		}
+		asset, domain, ok := strings.Cut(entry, "=")
+		if !ok || (asset != "email-north" && asset != "email-east") || !provider.ValidDomain(domain) {
+			return errors.New("EMAIL_DIAGNOSTICS_TARGETS must map email-north or email-east to a valid owned domain")
+		}
+		store.DNSTargets[asset] = domain
+	}
+	if err = store.EnsureCampaigns(startup); err != nil {
+		return err
+	}
 	go store.RunWorker(ctx)
 	app := &ops.Server{Store: store, Origin: env("ALLOWED_ORIGIN", "http://localhost:5173"), WebDir: env("WEB_DIR", "web/dist")}
 	server := &http.Server{Addr: addr, Handler: app.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 12 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}

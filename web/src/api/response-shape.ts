@@ -3,6 +3,22 @@
 type FieldKind = 'array' | 'object' | 'number' | 'string' | 'boolean';
 const shapes: [RegExp, Record<string, FieldKind>][] = [
   [
+    /^\/campaigns(?:\?|$)/,
+    { items: 'array', summaries: 'object', assets: 'array', total: 'number', observedAt: 'string' }
+  ],
+  [
+    /^\/campaigns\//,
+    {
+      campaign: 'object',
+      enrollments: 'array',
+      executions: 'array',
+      audit: 'array',
+      total: 'number',
+      observedAt: 'string'
+    }
+  ],
+  [/^\/email-diagnostics$/, { items: 'array', observedAt: 'string' }],
+  [
     /^\/infrastructure$/,
     {
       mode: 'string',

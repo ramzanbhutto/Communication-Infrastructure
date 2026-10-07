@@ -15,7 +15,7 @@ flowchart LR
 
 The new repository had no Go services or frontend. The read-only reference was Python/FastAPI, not the previously described five-service Go stack. This implementation uses one modular Go API rather than inventing those services. PostgreSQL is the source of truth. Redis transports reply events. All provider outcomes are explicitly simulated.
 
-`cmd/ops` owns configuration and process lifecycle. `internal/ops` contains policy rules, transactions, HTTP handlers and the worker. `migrations` defines the database. `web/src/api` holds typed contracts and transport. `web/src/components` contains the five product views and their investigation panels.
+`cmd/ops` owns configuration and process lifecycle. `internal/ops` contains policy rules, transactions, HTTP handlers and the worker. `migrations` defines the database. `web/src/api` holds typed contracts and transport. `web/src/components` contains product views and investigation panels.
 
 ## Identity and tenant separation
 
@@ -33,7 +33,7 @@ Quarantine and restore lock the asset row and check its version. Changes and aud
 
 An active call prevents changes to its source line. Restoration requires an observation newer than quarantine, at least 20 measured attempts, a filter rate no greater than 5% and no spam label. These are demonstration rules, not a provider guarantee. The clean sample action inserts a simulated observation. It does not reset history or override the gate. Rejected restoration is audited.
 
-Email fixtures expose SPF, DKIM, DMARC and warmup age. State transitions and live DNS updates are not implemented for email assets.
+The original asset fixtures expose SPF, DKIM, DMARC and ramp age. Campaigns use separate persisted diagnostic assessments with explicit source and freshness. See [campaign scheduling and email evidence](campaigns-and-email.md) for transaction boundaries, shared asset limits and optional native DNS.
 
 ## Outreach safeguards
 
@@ -80,3 +80,7 @@ The old dialer and infrastructure dialer share the workspace call lock. Queued, 
 The local lab runs a separate HTTP server and an OPTIONS-only UDP SIP peer. Provider identities are in memory; application jobs and events are in PostgreSQL. After a lab restart, an unresolved provider record may no longer be available. The application reports that loss, never fabricates verification. The explicit local reset can discard unresolved synthetic records. Live mode is prohibited at startup.
 
 The optional iMessage adapter routes through a separate authenticated Mac bridge contract. It has independent permission records, checks an existing iMessage chat before submission and pulls reply and delivery evidence rather than accepting unsigned webhooks. The original providers keep their default routing. See [the iMessage architecture and limits](imessage.md).
+
+## Campaign extension
+
+Campaign definitions, enrollments and step executions are tenant-scoped PostgreSQL records. A scheduler transaction reserves an execution and its existing delivery job together. Reply persistence stops future campaign work in the same transaction. Unknown submissions stay held and never trigger another step. The implementation retains the existing manual outreach and optional iMessage paths. [Campaigns and email diagnostics](campaigns-and-email.md) documents the policy and limits.
